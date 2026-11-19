@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎵 Melodia — Music Learning Chatbot</title>
+<style>
+  :root{
+    --bg:#0f1220; --bg2:#171b2e; --card:#1e2440; --card2:#262e52;
+    --accent:#7c5cff; --accent2:#00d4ff; --green:#2ee6a8; --pink:#ff5c8a;
+    --text:#eef1ff; --muted:#9aa3c7; --radius:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+  body{background:linear-gradient(160deg,var(--bg),#1a1030 70%);color:var(--text);min-height:100vh}
+  header{padding:18px 28px;display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.04);backdrop-filter:blur(8px);position:sticky;top:0;z-index:50;border-bottom:1px solid rgba(255,255,255,.08)}
+  header h1{font-size:1.4rem;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  header .logo{font-size:1.8rem}
+  nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  nav button{background:var(--card);border:1px solid rgba(255,255,255,.1);color:var(--text);padding:8px 14px;border-radius:999px;cursor:pointer;font-size:.85rem;transition:.2s}
+  nav button:hover,nav button.active{background:linear-gradient(90deg,var(--accent),var(--accent2));border-color:transparent}
+  main{max-width:1100px;margin:0 auto;padding:24px 16px 80px}
+  section.view{display:none;animation:fade .3s}
+  section.view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .card{background:var(--card);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);padding:20px;margin-bottom:18px}
+  .card h2{font-size:1.1rem;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .muted{color:var(--muted);font-size:.85rem}
+  .btn{background:linear-gradient(90deg,var(--accent),#9b5cff);color:#fff;border:none;padding:10px 18px;border-radius:10px;cursor:pointer;font-size:.9rem;font-weight:600;transition:.2s}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(124,92,255,.4)}
+  .btn.rec{background:linear-gradient(90deg,#ff3b5c,var(--pink))}
+  .btn.green{background:linear-gradient(90deg,#0bbf7f,var(--green))}
+  .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,.2)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+
+  /* CHAT */
+  #chatBox{height:52vh;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--bg2);border-radius:12px;border:1px solid rgba(255,255,255,.07)}
+  .msg{max-width:78%;padding:10px 14px;border-radius:14px;line-height:1.5;font-size:.92rem;white-space:pre-wrap}
+  .msg.bot{background:var(--card2);align-self:flex-start;border-bottom-left-radius:4px}
+  .msg.user{background:linear-gradient(90deg,var(--accent),#6a4dff);align-self:flex-end;border-bottom-right-radius:4px}
+  .chatInputRow{display:flex;gap:10px;margin-top:14px}
+  .chatInputRow input{flex:1;background:var(--bg2);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:12px 16px;border-radius:12px;font-size:.95rem;outline:none}
+  .chatInputRow input:focus{border-color:var(--accent)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .chip{background:var(--bg2);border:1px solid rgba(255,255,255,.12);color:var(--muted);padding:6px 12px;border-radius:999px;font-size:.78rem;cursor:pointer}
+  .chip:hover{color:#fff;border-color:var(--accent)}
+
+  /* LESSONS */
+  .lesson{border-left:3px solid var(--accent2);padding:12px 16px;background:var(--bg2);border-radius:0 10px 10px 0;margin-bottom:12px}
+  .lesson h3{font-size:.98rem;color:var(--accent2);margin-bottom:6px}
+  .lesson p,.lesson li{font-size:.88rem;color:#d5d9f0;line-height:1.6}
+  .lesson ul{padding-left:18px}
+  details{margin-bottom:10px}
+  details summary{cursor:pointer;font-weight:600;padding:10px 14px;background:var(--bg2);border-radius:10px;list-style:none}
+  details summary:hover{background:var(--card2)}
+  details[open] .lesson{margin-top:8px}
+
+  /* TUNER */
+  #noteDisplay{font-size:3.2rem;font-weight:800;text-align:center;background:linear-gradient(90deg,var(--accent2),var(--green));-webkit-background-clip:text;background-clip:text;color:transparent;font-variant-numeric:tabular-nums}
+  #centsDisplay{text-align:center;color:var(--muted);font-size:1rem;margin-top:2px}
+  #meter{width:100%;height:14px;background:var(--bg2);border-radius:999px;margin:16px 0;position:relative;overflow:hidden}
+  #needle{position:absolute;top:0;left:50%;width:4px;height:100%;background:var(--pink);border-radius:2px;transition:left .08s}
+  .meterLabel{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted)}
+
+  /* RECORDER */
+  .recRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  #recTimer{font-size:1.4rem;font-variant-numeric:tabular-nums;min-width:90px}
+  #recList .recording{display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg2);border-radius:10px;margin-top:10px;flex-wrap:wrap}
+  #recList audio{flex:1;min-width:180px;height:34px}
+  .dot{width:12px;height:12px;border-radius:50%;background:#555}
+  .dot.live{background:#ff3b5c;animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.3}}
+
+  /* PIANO */
+  #piano{position:relative;height:170px;background:var(--bg2);border-radius:12px;padding:10px;user-select:none}
+  .wkey{position:absolute;top:10px;bottom:24px;background:linear-gradient(#fff,#e8e8ee);border:1px solid #999;border-radius:0 0 6px 6px;cursor:pointer}
+  .wkey:active{background:linear-gradient(#d8d0ff,#b9a8ff)}
+  .bkey{position:absolute;top:10px;height:96px;background:linear-gradient(#333,#000);border-radius:0 0 5px 5px;cursor:pointer;z-index:2;border:1px solid #000}
+  .bkey:active{background:linear-gradient(#553,#775)}
+  .klabel{position:absolute;bottom:4px;width:100%;text-align:center;font-size:.62rem;color:#666;pointer-events:none}
+  .bkey .klabel{color:#aaa}
+
+  /* METRONOME */
+  .metroRow{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  #bpmVal{font-size:2rem;font-weight:700;color:var(--accent2);min-width:80px;font-variant-numeric:tabular-nums}
+  input[type=range]{flex:1;min-width:160px;accent-color:var(--accent)}
+  #beatLights{display:flex;gap:8px}
+  .blight{width:16px;height:16px;border-radius:50%;background:#333;transition:.1s}
+  .blight.on{background:var(--accent2);box-shadow:0 0 12px var(--accent2)}
+  .blight.down.on{background:var(--pink);box-shadow:0 0 12px var(--pink)}
+
+  /* PROJECTS */
+  .project{display:flex;align-items:center;gap:12px;background:var(--bg2);padding:14px;border-radius:10px;margin-bottom:10px;flex-wrap:wrap}
+  .project .pname{font-weight:600}
+  .project .pmeta{font-size:.75rem;color:var(--muted)}
+  .project input.pnameEdit{background:var(--card);border:1px solid var(--accent);color:#fff;border-radius:8px;padding:6px 10px;font-size:.9rem}
+  .tag{font-size:.7rem;background:rgba(124,92,255,.25);color:#c9baff;padding:3px 10px;border-radius:999px}
+  input.txt{background:var(--bg2);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:10px 14px;border-radius:10px;outline:none;font-size:.9rem}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+  .song{background:var(--bg2);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;margin-bottom:8px}
+  .song h3{font-size:.95rem;color:var(--accent2)}
+  .song .meta{font-size:.78rem;color:#c3c9e8;margin:4px 0;line-height:1.5}
+  .singRow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  #liveNote{font-size:2.6rem;font-weight:800;text-align:center;min-height:64px;background:linear-gradient(90deg,var(--accent2),var(--green));-webkit-background-clip:text;background-clip:text;color:transparent;font-variant-numeric:tabular-nums}
+  #liveInfo{text-align:center;color:var(--muted);font-size:.88rem;min-height:22px}
+  .levelBadge{display:inline-block;background:rgba(46,230,168,.15);color:var(--green);border:1px solid var(--green);border-radius:999px;padding:4px 12px;font-size:.78rem;font-weight:600}
+  footer{text-align:center;color:var(--muted);font-size:.78rem;padding:20px}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">🎵</span>
+  <h1>Melodia — Learn, Play, Record</h1>
+  <nav>
+    <button data-view="chat" class="active">🤖 Chatbot</button>
+    <button data-view="lessons">📚 Lessons</button>
+    <button data-view="tuner">🎚️ Tuner</button>
+    <button data-view="recorder">🎙️ Recorder</button>
+    <button data-view="piano">🎹 Piano</button>
+    <button data-view="metronome">⏱️ Metronome</button>
+    <button data-view="sing">🎤 Sing Coach</button>
+    <button data-view="projects">💾 Projects</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ CHAT ============ -->
+  <section class="view active" id="view-chat">
+    <div class="card">
+      <h2>🤖 Melodia Music Chatbot</h2>
+      <p class="muted">Ask me anything about music theory — scales, chords, intervals, pitch, rhythm, practice tips. All knowledge is built in and works offline.</p>
+      <div id="chatBox"></div>
+      <div class="chatInputRow">
+        <input id="chatInput" placeholder="e.g. What is a major scale? How do I sing in pitch?" autocomplete="off">
+        <button class="btn rec" id="chatRecBtn" title="Record your singing in chat">🎤 Record</button>
+        <button class="btn" id="sendBtn">Send ➤</button>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+  </section>
+
+  <!-- ============ LESSONS ============ -->
+  <section class="view" id="view-lessons">
+    <div class="card">
+      <h2>📚 Music Lessons</h2>
+      <p class="muted">Structured mini-lessons. Open a topic, learn, then quiz the chatbot to test yourself.</p>
+      <div id="lessonList"></div>
+    </div>
+  </section>
+
+  <!-- ============ TUNER ============ -->
+  <section class="view" id="view-tuner">
+    <div class="card">
+      <h2>🎚️ Live Pitch Tuner</h2>
+      <p class="muted">Sing or play a note — your mic is analyzed in real time using autocorrelation (all local, nothing is uploaded). Needs HTTPS or localhost.</p>
+      <div id="noteDisplay">– –</div>
+      <div id="centsDisplay">Start the tuner and make a sound</div>
+      <div id="meter"><div id="needle"></div></div>
+      <div class="meterLabel"><span>-50 cents (flat)</span><span>in tune</span><span>+50 cents (sharp)</span></div>
+      <div class="recRow" style="margin-top:14px">
+        <button class="btn green" id="tunerBtn">🎤 Start Tuner</button>
+        <span class="muted" id="tunerStatus"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RECORDER ============ -->
+  <section class="view" id="view-recorder">
+    <div class="card">
+      <h2>🎙️ Recorder</h2>
+      <p class="muted">Record yourself with MediaRecorder. Play back, download, or save a recording into a Project.</p>
+      <div class="recRow" style="margin:14px 0">
+        <span class="dot" id="recDot"></span>
+        <span id="recTimer">00:00.0</span>
+        <button class="btn rec" id="recBtn">● Record</button>
+        <button class="btn ghost" id="stopRecBtn" disabled>■ Stop</button>
+      </div>
+      <div id="recList"></div>
+    </div>
+  </section>
+
+  <!-- ============ PIANO ============ -->
+  <section class="view" id="view-piano">
+    <div class="card">
+      <h2>🎹 Playable Piano</h2>
+      <p class="muted">Click the keys or use your keyboard row <b>A S D F G H J K</b> (white) and <b>W E T Y U</b> (black). Choose a scale to highlight it and train your ears.</p>
+      <div class="recRow" style="margin:12px 0">
+        <label class="muted">Highlight scale:</label>
+        <select id="scaleSelect" class="txt"></select>
+        <button class="btn ghost" id="playScaleBtn">▶ Play Scale</button>
+      </div>
+      <div id="piano"></div>
+    </div>
+  </section>
+
+  <!-- ============ METRONOME ============ -->
+  <section class="view" id="view-metronome">
+    <div class="card">
+      <h2>⏱️ Metronome</h2>
+      <div class="metroRow">
+        <span id="bpmVal">100</span>
+        <input type="range" id="bpmSlider" min="30" max="240" value="100">
+        <div id="beatLights"></div>
+        <select id="beatCount" class="txt">
+          <option value="2">2 beats</option><option value="3">3 beats</option>
+          <option value="4" selected>4 beats</option><option value="6">6 beats</option>
+        </select>
+        <button class="btn green" id="metroBtn">▶ Start</button>
+      </div>
+      <p class="muted" style="margin-top:12px">Tip: practice a piece at 70% speed until it's clean, then raise the tempo by 5 BPM at a time.</p>
+    </div>
+  </section>
+
+  <!-- ============ SING COACH ============ -->
+  <section class="view" id="view-sing">
+    <div class="card">
+      <h2>🎤 Sing-a-Song Coach</h2>
+      <p class="muted">Pick a song, play its root note (Sa) as reference, then sing — Melodia detects your pitch live and tells you the note you're on and whether it fits the song's scale. <b>Note:</b> songs are stored as practice metadata only (title, film, singer, scale, tempo, tips) — no copyrighted lyrics or audio are embedded. Paste your own lyrics below if you want them on screen while you sing.</p>
+      <input class="txt" id="songSearch" placeholder="🔍 Search songs, singers or films…" style="width:100%;margin:10px 0">
+      <div id="songList" style="max-height:280px;overflow-y:auto"></div>
+      <div id="songPanel" style="margin-top:16px"></div>
+    </div>
+  </section>
+
+  <!-- ============ PROJECTS ============ -->
+  <section class="view" id="view-projects">
+    <div class="card">
+      <h2>💾 My Projects</h2>
+      <p class="muted">Projects are saved in your browser (localStorage) — recordings, notes, tempo and date. Nothing leaves your device.</p>
+      <div class="recRow" style="margin:14px 0">
+        <input class="txt" id="newProjectName" placeholder="New project name… e.g. My First Song">
+        <button class="btn" id="newProjectBtn">＋ Create Project</button>
+        <button class="btn ghost" id="exportProjectsBtn">⬇ Export JSON</button>
+        <button class="btn ghost" id="importProjectsBtn">⬆ Import JSON</button>
+        <input type="file" id="importFile" accept=".json" hidden>
+      </div>
+      <div id="projectList"></div>
+    </div>
+  </section>
+</main>
+
+<footer>Melodia — offline music tutor · tuner & recorder need microphone permission (HTTPS or localhost) · everything runs locally in your browser</footer>
+
+<script>
+"use strict";
+/* ============================================================
+   MELODIA — self-contained music learning web app.
+   Chatbot = local rule-based knowledge base (no external AI API).
+   ============================================================ */
+
+/* ---------------- NAVIGATION ---------------- */
+document.querySelectorAll("nav button").forEach(function(b){
+  b.addEventListener("click", function(){
+    document.querySelectorAll("nav button").forEach(function(x){x.classList.remove("active");});
+    document.querySelectorAll("section.view").forEach(function(s){s.classList.remove("active");});
+    b.classList.add("active");
+    document.getElementById("view-" + b.dataset.view).classList.add("active");
+  });
+});
+
+/* ---------------- KNOWLEDGE BASE ---------------- */
+var KB = [
+  {k:["hello","hi","hey"], a:"Hey! 👋 I'm Melodia, your music tutor. Ask me about scales, chords, intervals, pitch, rhythm, or how to practice — or tap a suggestion below."},
+  {k:["major scale"], a:"The **major scale** is 7 notes with the pattern: W-W-H-W-W-W-H (W = whole step, H = half step).\n\nC major: C D E F G A B C — no sharps or flats. It's the 'happy' sounding foundation of Western music. Every other scale is described by comparing it to major."},
+  {k:["minor scale"], a:"The **natural minor scale** pattern is W-H-W-W-H-W-W — it sounds darker/sadder.\n\nA minor: A B C D E F G A (same notes as C major, different home note — that's called 'relative minor').\nThere are two other useful versions: harmonic minor (raised 7th) and melodic minor (raised 6th & 7th going up)."},
+  {k:["pentatonic"], a:"The **minor pentatonic scale** has 5 notes: 1, ♭3, 4, 5, ♭7.\nA minor pentatonic: A C D E G. Remove the two 'trouble' notes from a scale and it's nearly impossible to sound bad — that's why rock/blues soloists love it. The **major pentatonic** is 1,2,3,5,6 (C D E G A in C)."},
+  {k:["blues scale"], a:"The **blues scale** = minor pentatonic + a ♭5 'blue note'.\nA blues: A C D D♯/E♭ E G. Slide through that ♭5 and you instantly get blues flavor."},
+  {k:["interval"], a:"An **interval** is the distance between two notes, measured in half steps (semitones):\n• Minor 2nd = 1 (scary 'Jaws' note)\n• Major 2nd = 2 (Happy Birthday start)\n• Major 3rd = 4 (When the Saints)\n• Perfect 4th = 5 (Here Comes the Bride)\n• Perfect 5th = 7 (Star Wars theme)\n• Octave = 12 (Somewhere Over the Rainbow)\nLearn to *sing* each one from a song you know — that's ear training."},
+  {k:["chord","triad"], a:"A **triad** = root + 3rd + 5th stacked.\n• Major = 4 + 7 half steps (bright) — C E G\n• Minor = 3 + 7 (sad) — C E♭ G\n• Diminished = 3 + 6 (tense) — C E♭ G♭\n• Augmented = 4 + 8 (mysterious) — C E G♯\nBuild any major chord: take the root, count 4 half steps up for the middle note, then 3 more for the top."},
+  {k:["seventh"], a:"**7th chords** add the 7th scale degree above the root:\n• Dominant 7 (G7) = major triad + minor 7th — pulls home to the chord a 5th below. Essential in blues & jazz.\n• Major 7 (Cmaj7) = major triad + major 7th — dreamy (think bossa nova).\n• Minor 7 (Am7) = minor triad + minor 7th — smooth and mellow."},
+  {k:["progression","chords together"], a:"Classic **chord progressions** to learn first:\n• I–IV–V–I (C F G C) — old-school rock & gospel\n• I–V–vi–IV (C G Am F) — 'the 4 chords of pop'\n• ii–V–I (Dm7 G7 Cmaj7) — the jazz engine\n• i–iv–v (Am Dm Em) — minor key ballad\nPlay them slowly with the built-in piano, one chord per bar, using the metronome."},
+  {k:["pitch","sing in tune","tune"], a:"**Pitch** = how high or low a note is, set by vibration frequency (A4 = 440 Hz).\nTo sing in pitch:\n1. Open the Tuner tab, sing 'ahh' and watch the needle — hold it near the center.\n2. Match a piano note: play it, hear it in your head, then copy it.\n3. Record yourself (Recorder tab) and listen back — you hear your own pitch errors far better on playback.\n4. Practice slides (sirens) and simple 5-note patterns daily. Pitch accuracy is a muscle — 10 focused minutes a day beats an hour once a week."},
+  {k:["rhythm","tempo","beat"], a:"**Rhythm** is the arrangement of sounds in time:\n• Beat = the steady pulse (metronome tab!)\n• Tempo = beat speed in BPM (60 = slow ballad, 120 = pop, 160+ = fast)\n• Common note values: whole (4 beats), half (2), quarter (1), eighth (½), sixteenth (¼)\n• Time signatures: 4/4 (most music), 3/4 (waltz), 6/8 (swaying feel)\nSubdivide out loud: '1 e & a 2 e & a' — if you can say it, you can play it."},
+  {k:["circle of fifths","key signature"], a:"The **circle of fifths** orders keys by 5ths: C → G → D → A … Each step clockwise adds one sharp; counterclockwise adds one flat. Neighbors on the circle are the keys you most often modulate to. It also shows relative minors (inner ring). Memorize it and key signatures become instant."},
+  {k:["practice","improve","get better"], a:"**Effective practice routine** (30–45 min):\n1. 5 min warm-up (sirens/scales for singers, slow chromatic for players)\n2. 10 min technique — slow with the metronome, accuracy before speed\n3. 10 min repertoire — fix the *hardest 2 bars* first, don't always start at the beginning\n4. 5 min ear training — intervals or chord quality quiz\n5. 5 min record & review yourself\nGolden rule: never practice mistakes — slow down until it's perfect, THEN speed up."},
+  {k:["sight read","sheet music","notation"], a:"Reading **sheet music** basics: the treble clef lines are E-G-B-D-F ('Every Good Boy Does Fine'), spaces spell F-A-C-E. Bass clef lines: G-B-D-F-A. Notes higher on the staff = higher pitch. Learn note names first, then rhythms separately, then combine — exactly like learning to read a language."},
+  {k:["ear training","train ear"], a:"**Ear training** plan:\n1. Week 1–2: sing back single notes (call & response with the piano)\n2. Week 3–4: major vs minor chords by feel ('happy vs sad')\n3. Week 5+: intervals using songs you know (see my interval answer)\n4. Always: record and compare — the Recorder + Tuner tabs here are your ear-training lab."},
+  {k:["breathing","breath","diaphragm"], a:"**Breathing for singers**: breathe low into your belly and ribs (diaphragmatic), not high into the chest. Try: inhale for 4 counts feeling your ribs expand, hiss out on 'sss' for 8, then 12, then 16. Support = steady, low airflow — not pushing. Good breath support fixes pitch, volume and stamina at once."},
+  {k:["vibrato"], a:"**Vibrato** is a controlled, even oscillation of pitch (~5–7 Hz) used to color sustained notes. It develops from relaxed posture, good breath support and loose jaw/throat — never forced by wobbling the voice. Practice slowly pulsing between two close notes (use the Tuner to see it), and it will gradually emerge naturally."},
+  {k:["harmony"], a:"**Harmony** = notes sounding together. Two-note harmony is 'intervals'; three or more build chords. Vocal harmony tip: sing a third above or below the melody (4 half steps above a major-note melody). Hold a drone note (like the root) on the piano and sing a scale against it — hear which scale tones feel stable (1,3,5) vs. tense (4,7)."},
+  {k:["dynamics"], a:"**Dynamics** = volume levels: p (piano/soft), mp, mf, f (forte/loud), plus crescendo (get louder) and decrescendo (get softer). Musicians who only play one volume sound robotic — plan where your loudest and softest moments will be, and practice the *range* between them, not just the notes."},
+  {k:["mode","modes"], a:"**Modes** = scales starting on different degrees of the major scale: Ionian (=major), Dorian (minor, bright 6th — 'Scarborough Fair'), Phrygian (♭2, Spanish flavor), Lydian (♯4, dreamy), Mixolydian (♭7, rock/blues), Aeolian (=natural minor), Locrian (unstable). Try C D E F G A B but resolving to D → you're in Dorian."},
+  {k:["transposition","transpose"], a:"**Transposing** = moving music to a different key. Method: find the scale-degree number of every note in the original key, then rebuild those degrees in the new key. Singers transpose to fit their range — find the lowest and highest notes of the song and pick the key where both sit comfortably."},
+  {k:["compose","write a song"], a:"**Songwriting starter kit**:\n1. Pick a key (C or G for beginners) and the I–V–vi–IV progression\n2. Hum a 4-bar melody over it using only scale notes 1,2,3,5,6\n3. Write one honest line per bar — title = the most singable phrase\n4. Record a rough demo in the Recorder tab, save it as a Project\n5. Revise tomorrow with fresh ears. Done beats perfect."},
+  {k:["guitar"], a:"Guitar quick tips: tune with the built-in Tuner (E2 A2 D3 G3 B3 E4). Learn open chords Em, Am, C, G, D first — hundreds of songs use just those. Practice chord changes with the metronome at 60 BPM, one change per bar, then speed up. Use the minor pentatonic shape at the 5th fret for your first solos."},
+  {k:["piano","keyboard"], a:"Piano quick tips: sit at elbow height, curved fingers, wrist level. Learn C major 5-finger position first (C D E F G), hands separately then together. Scales with the metronome, thumbs-under on the way up. The Piano tab here highlights scales so you can *see* the pattern you're playing."},
+  {k:["music theory why","theory important"], a:"Theory isn't rules — it's a *map* of what already sounds good. Knowing I–IV–V means you can join a jam after hearing 2 bars. Knowing intervals means you can write down the melody in your head. Learn theory *through songs you love* and it sticks forever."},
+  {k:["thank"], a:"You're welcome! 🎶 Keep the questions coming — or jump into the Tuner/Recorder tabs and practice what you just learned."},
+  {k:["help","what can you do"], a:"I can teach: **scales** (major, minor, pentatonic, blues, modes), **chords** (triads, 7ths, progressions), **intervals & ear training**, **pitch & singing**, **rhythm & tempo**, **circle of fifths**, **practice routines**, **songwriting**, plus instrument tips for piano and guitar. This website also has a Tuner, Recorder, Piano, Metronome and Projects — try them all!"}
+];
+
+var SUGGESTIONS = ["What is a major scale?","How do I sing in pitch?","Explain intervals","Best practice routine","What is I-V-vi-IV?","Teach me the blues scale"];
+
+function kbAnswer(q){
+  var s = q.toLowerCase();
+  var best = null, bestScore = 0;
+  KB.forEach(function(item){
+    var score = 0;
+    item.k.forEach(function(key){ if(s.indexOf(key) !== -1) score += key.length; });
+    if(score > bestScore){ bestScore = score; best = item; }
+  });
+  if(best) return best.a;
+  return "Hmm, I don't have a lesson on that yet. 🤔 Try asking about: scales, chords, intervals, pitch, rhythm, the circle of fifths, ear training, breathing, songwriting, or practice tips. Or browse the Lessons tab!";
+}
+
+/* ---------------- CHAT UI ---------------- */
+var chatBox = document.getElementById("chatBox");
+var chatInput = document.getElementById("chatInput");
+
+function addMsg(text, who){
+  var d = document.createElement("div");
+  d.className = "msg " + who;
+  d.textContent = text;
+  chatBox.appendChild(d);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function sendChat(){
+  var q = chatInput.value.trim();
+  if(!q) return;
+  addMsg(q, "user");
+  chatInput.value = "";
+  setTimeout(function(){
+    if(/level|progress|score|how (good|am i)/i.test(q) && typeof getLevelSummary === "function"){ addMsg(getLevelSummary(), "bot"); return; }
+    addMsg(kbAnswer(q), "bot");
+  }, 250);
+}
+document.getElementById("sendBtn").addEventListener("click", sendChat);
+chatInput.addEventListener("keydown", function(e){ if(e.key === "Enter") sendChat(); });
+
+SUGGESTIONS.forEach(function(s){
+  var c = document.createElement("button");
+  c.className = "chip"; c.textContent = s;
+  c.addEventListener("click", function(){ chatInput.value = s; sendChat(); });
+  document.getElementById("chips").appendChild(c);
+});
+addMsg("Welcome to Melodia! 🎵 Ask me anything about music — try 'What is a major scale?' or 'How do I sing in pitch?'", "bot");
+
+/* ---------------- LESSONS ---------------- */
+var LESSONS = [
+  {t:"Lesson 1 · The Musical Alphabet & Piano Layout", body:"Music uses just 7 letter names: A B C D E F G — then it repeats. On a piano, C is always the white key just left of the two black keys. The black keys are sharps (♯, higher) or flats (♭, lower) of their neighbors.\nTry it: find every C on the Piano tab. There are 8 of them — one per octave."},
+  {t:"Lesson 2 · Major Scales (W-W-H-W-W-W-H)", body:"Start on any note, then follow whole and half steps: W-W-H-W-W-W-H.\n• C major: C D E F G A B C\n• G major: G A B C D E F♯ G\nSing it with numbers (1-2-3-4-5-6-7-8) — that 'movable Do' system lets you transpose instantly."},
+  {t:"Lesson 3 · Chords — Build in Thirds", body:"Stack every other scale note: C-E-G from C major = a C major triad.\n• Major chord: root +4, then +3 half steps (happy)\n• Minor chord: root +3, then +4 (sad)\nPractice: build C, Dm, Em, F, G, Am — the 6 chords behind thousands of pop songs."},
+  {t:"Lesson 4 · Rhythm & the Metronome", body:"Count quarters aloud: 1 2 3 4. Add '&' for eighths: 1 & 2 & 3 & 4 &. Add 'e a' for sixteenths: 1 e & a.\nSet the Metronome tab to 70 BPM and clap quarter notes for a minute without drifting. That single drill improves every instrument you'll ever touch."},
+  {t:"Lesson 5 · Singing in Pitch", body:"1. Open the Tuner, sing a comfortable 'ahh' and hold the needle center.\n2. Play C4 on the Piano, sing it back, check the tuner says 'C'.\n3. Do the same for D, E, F, G.\n4. Record the exercise, listen back, mark any note that drifted.\nDaily 10-minute pitch matching is how every good singer got good."},
+  {t:"Lesson 6 · Ear Training with Songs", body:"Anchor intervals to songs:\n• Perfect 5th → Star Wars theme\n• Major 3rd → When the Saints\n• Minor 3rd → Greensleeves\n• Perfect 4th → Here Comes the Bride\n• Octave → Somewhere Over the Rainbow\nQuiz: play any two piano keys and name the gap. 10 minutes a day = huge progress in weeks."}
+];
+var ll = document.getElementById("lessonList");
+LESSONS.forEach(function(l){
+  var det = document.createElement("details");
+  var sum = document.createElement("summary"); sum.textContent = l.t;
+  var div = document.createElement("div"); div.className = "lesson";
+  l.body.split("\n").forEach(function(line){
+    var p = document.createElement("p"); p.textContent = line; div.appendChild(p);
+  });
+  det.appendChild(sum); det.appendChild(div); ll.appendChild(det);
+});
+
+/* ---------------- AUDIO ENGINE (shared) ---------------- */
+var audioCtx = null;
+function getCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if(audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
+var NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+function noteName(midi){ return NOTE_NAMES[midi % 12] + Math.floor(midi / 12 - 1); }
+function midiToFreq(m){ return 440 * Math.pow(2, (m - 69) / 12); }
+
+function playTone(freq, dur, when){
+  var ctx = getCtx();
+  var t = when || ctx.currentTime;
+  var osc = ctx.createOscillator();
+  var g = ctx.createGain();
+  osc.type = "triangle";
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g); g.connect(ctx.destination);
+  osc.start(t); osc.stop(t + dur + 0.05);
+}
+
+/* ---------------- TUNER (autocorrelation) ---------------- */
+var tunerStream = null, tunerRAF = null, tunerActive = false;
+var tunerBtn = document.getElementById("tunerBtn");
+var noteDisplay = document.getElementById("noteDisplay");
+var centsDisplay = document.getElementById("centsDisplay");
+var needle = document.getElementById("needle");
+var tunerStatus = document.getElementById("tunerStatus");
+
+function autocorrelate(buf, sampleRate){
+  var SIZE = buf.length;
+  var rms = 0;
+  for(var i = 0; i < SIZE; i++){ rms += buf[i] * buf[i]; }
+  rms = Math.sqrt(rms / SIZE);
+  if(rms < 0.008) return -1;
+  var r1 = 0, r2 = SIZE - 1, thres = 0.2;
+  for(var i2 = 0; i2 < SIZE / 2; i2++){ if(Math.abs(buf[i2]) < thres){ r1 = i2; break; } }
+  for(var i3 = 1; i3 < SIZE / 2; i3++){ if(Math.abs(buf[SIZE - i3]) < thres){ r2 = SIZE - i3; break; } }
+  var b = buf.slice(r1, r2);
+  var n = b.length;
+  var c = new Array(n).fill(0);
+  for(var lag = 0; lag < n; lag++){
+    for(var j = 0; j < n - lag; j++){ c[lag] += b[j] * b[j + lag]; }
+  }
+  var d = 0; while(c[d] > c[d + 1]) d++;
+  var maxVal = -1, maxPos = -1;
+  for(var k = d; k < n; k++){ if(c[k] > maxVal){ maxVal = c[k]; maxPos = k; } }
+  var T0 = maxPos;
+  if(T0 <= 0) return -1;
+  return sampleRate / T0;
+}
+
+function tunerLoop(){
+  if(!tunerActive) return;
+  var ctx = getCtx();
+  var analyser = tunerAnalyser;
+  var buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+  var freq = autocorrelate(buf, ctx.sampleRate);
+  if(freq > 0){
+    var midi = Math.round(69 + 12 * Math.log2(freq / 440));
+    var target = midiToFreq(midi);
+    var cents = Math.round(1200 * Math.log2(freq / target));
+    noteDisplay.textContent = noteName(midi);
+    centsDisplay.textContent = freq.toFixed(1) + " Hz · " + (cents > 0 ? "+" : "") + cents + " cents";
+    var pct = Math.max(-50, Math.min(50, cents)) / 100 + 0.5;
+    needle.style.left = (pct * 100) + "%";
+    needle.style.background = Math.abs(cents) < 8 ? "var(--green)" : "var(--pink)";
+  } else {
+    noteDisplay.textContent = "– –";
+    centsDisplay.textContent = "Listening… make a sound";
+    needle.style.left = "50%";
+  }
+  tunerRAF = requestAnimationFrame(tunerLoop);
+}
+var tunerAnalyser = null;
+
+tunerBtn.addEventListener("click", function(){
+  if(tunerActive){ stopTuner(); return; }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    tunerStatus.textContent = "Microphone needs HTTPS or localhost.";
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false}})
+    .then(function(stream){
+      tunerStream = stream;
+      var ctx = getCtx();
+      var src = ctx.createMediaStreamSource(stream);
+      tunerAnalyser = ctx.createAnalyser();
+      tunerAnalyser.fftSize = 2048;
+      src.connect(tunerAnalyser);
+      tunerActive = true;
+      tunerBtn.textContent = "⏹ Stop Tuner";
+      tunerStatus.textContent = "Listening…";
+      tunerLoop();
+    })
+    .catch(function(){ tunerStatus.textContent = "Mic permission denied or unavailable."; });
+});
+function stopTuner(){
+  tunerActive = false;
+  cancelAnimationFrame(tunerRAF);
+  if(tunerStream){ tunerStream.getTracks().forEach(function(t){ t.stop(); }); tunerStream = null; }
+  tunerBtn.textContent = "🎤 Start Tuner";
+  tunerStatus.textContent = "";
+  noteDisplay.textContent = "– –";
+  needle.style.left = "50%";
+}
+
+/* ---------------- RECORDER ---------------- */
+var mediaStream = null, mediaRecorder = null, recChunks = [], recStart = 0, recTimerInt = null;
+var recBtn = document.getElementById("recBtn");
+var stopRecBtn = document.getElementById("stopRecBtn");
+var recDot = document.getElementById("recDot");
+var recTimer = document.getElementById("recTimer");
+var recList = document.getElementById("recList");
+var recIndex = 0;
+var lastRecording = null; // {url, blob, name}
+
+recBtn.addEventListener("click", function(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    recList.innerHTML = "<p class='muted'>Recording needs HTTPS or localhost.</p>";
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    mediaStream = stream;
+    recChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = function(e){ if(e.data.size) recChunks.push(e.data); };
+    mediaRecorder.onstop = onRecStop;
+    mediaRecorder.start();
+    recStart = Date.now();
+    recTimerInt = setInterval(function(){
+      var s = (Date.now() - recStart) / 1000;
+      var m = Math.floor(s / 60);
+      recTimer.textContent = (m < 10 ? "0" : "") + m + ":" + (s % 60).toFixed(1).padStart(4, "0");
+    }, 100);
+    recDot.classList.add("live");
+    recBtn.disabled = true; stopRecBtn.disabled = false;
+  }).catch(function(){ recList.innerHTML = "<p class='muted'>Mic permission denied or unavailable.</p>"; });
+});
+
+stopRecBtn.addEventListener("click", function(){
+  if(mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+  clearInterval(recTimerInt);
+  recDot.classList.remove("live");
+  recBtn.disabled = false; stopRecBtn.disabled = true;
+});
+
+function onRecStop(){
+  if(mediaStream){ mediaStream.getTracks().forEach(function(t){ t.stop(); }); mediaStream = null; }
+  var blob = new Blob(recChunks, {type:"audio/webm"});
+  var url = URL.createObjectURL(blob);
+  recIndex++;
+  var name = "Take " + recIndex;
+  lastRecording = {url:url, blob:blob, name:name};
+  var row = document.createElement("div");
+  row.className = "recording";
+  var title = document.createElement("b"); title.textContent = "🎤 " + name;
+  var audio = document.createElement("audio"); audio.controls = true; audio.src = url;
+  var dl = document.createElement("button"); dl.className = "btn ghost"; dl.textContent = "⬇ Download";
+  dl.addEventListener("click", function(){
+    var a = document.createElement("a");
+    a.href = url; a.download = name + ".webm"; a.click();
+  });
+  var saveBtn = document.createElement("button"); saveBtn.className = "btn"; saveBtn.textContent = "💾 Save to Project";
+  saveBtn.addEventListener("click", function(){ saveRecordingToProject(blob, name); });
+  row.appendChild(title); row.appendChild(audio); row.appendChild(dl); row.appendChild(saveBtn);
+  recList.prepend(row);
+  recTimer.textContent = "00:00.0";
+}
+
+/* ---------------- PIANO ---------------- */
+var pianoEl = document.getElementById("piano");
+var START_MIDI = 60; // C4
+var NUM_WHITE = 14;  // two octaves
+var WHITE_PATTERN = [0,2,4,5,7,9,11];
+var BLACK_AFTER = {0:1,2:3,5:6,7:8,9:10}; // white index -> black semitone offset
+var keyEls = {};
+
+function buildPiano(){
+  pianoEl.innerHTML = "";
+  keyEls = {};
+  var whiteW = 100 / NUM_WHITE;
+  var whites = [];
+  for(var i = 0; i < NUM_WHITE; i++){
+    var midi = START_MIDI + WHITE_PATTERN[i % 7] + 12 * Math.floor(i / 7);
+    whites.push(midi);
+  }
+  whites.forEach(function(midi, i){
+    var el = document.createElement("div");
+    el.className = "wkey";
+    el.style.left = (i * whiteW) + "%";
+    el.style.width = whiteW + "%";
+    var lab = document.createElement("span"); lab.className = "klabel"; lab.textContent = noteName(midi);
+    el.appendChild(lab);
+    el.addEventListener("pointerdown", function(e){ e.preventDefault(); pressKey(midi, el); });
+    pianoEl.appendChild(el);
+    keyEls[midi] = el;
+  });
+  whites.forEach(function(midi, i){
+    if(BLACK_AFTER.hasOwnProperty(i % 7)){
+      var bmidi = midi + BLACK_AFTER[i % 7];
+      var el = document.createElement("div");
+      el.className = "bkey";
+      el.style.left = ((i + 1) * whiteW - whiteW * 0.3) + "%";
+      el.style.width = (whiteW * 0.6) + "%";
+      var lab = document.createElement("span"); lab.className = "klabel"; lab.textContent = noteName(bmidi);
+      el.appendChild(lab);
+      el.addEventListener("pointerdown", function(e){ e.preventDefault(); pressKey(bmidi, el); });
+      pianoEl.appendChild(el);
+      keyEls[bmidi] = el;
+    }
+  });
+}
+function pressKey(midi, el){
+  playTone(midiToFreq(midi), 1.2);
+  if(el){ el.style.filter = "brightness(0.8)"; setTimeout(function(){ el.style.filter = ""; }, 150); }
+}
+buildPiano();
+
+/* keyboard mapping */
+var KEYMAP = {a:60, w:61, s:62, e:63, d:64, f:65, t:66, g:67, y:68, h:69, u:70, j:71, k:72};
+document.addEventListener("keydown", function(e){
+  if(e.repeat || document.activeElement === chatInput || document.activeElement && document.activeElement.tagName === "INPUT") return;
+  var m = KEYMAP[e.key.toLowerCase()];
+  if(m !== undefined && keyEls[m]) pressKey(m, keyEls[m]);
+});
+
+/* scale highlighting */
+var SCALES = {
+  "Major (Ionian)":[0,2,4,5,7,9,11],
+  "Natural Minor":[0,2,3,5,7,8,10],
+  "Major Pentatonic":[0,2,4,7,9],
+  "Minor Pentatonic":[0,3,5,7,10],
+  "Blues":[0,3,5,6,7,10],
+  "Dorian":[0,2,3,5,7,9,10],
+  "Mixolydian":[0,2,4,5,7,9,10],
+  "Chromatic (all)":[0,1,2,3,4,5,6,7,8,9,10,11]
+};
+var scaleSelect = document.getElementById("scaleSelect");
+Object.keys(SCALES).forEach(function(k){
+  var o = document.createElement("option"); o.value = k; o.textContent = k + " (C root)";
+  scaleSelect.appendChild(o);
+});
+function highlightScale(){
+  var set = {};
+  SCALES[scaleSelect.value].forEach(function(st){ set[(START_MIDI + st) % 12] = true; });
+  Object.keys(keyEls).forEach(function(m){
+    keyEls[m].style.outline = set[m % 12] ? "3px solid var(--accent2)" : "none";
+    keyEls[m].style.outlineOffset = "-3px";
+  });
+}
+scaleSelect.addEventListener("change", highlightScale);
+highlightScale();
+
+document.getElementById("playScaleBtn").addEventListener("click", function(){
+  var notes = SCALES[scaleSelect.value].map(function(st){ return START_MIDI + st; });
+  notes.push(START_MIDI + 12);
+  var ctx = getCtx();
+  notes.forEach(function(m, i){ playTone(midiToFreq(m), 0.5, ctx.currentTime + i * 0.45); });
+});
+
+/* ---------------- METRONOME ---------------- */
+var metroRunning = false, metroTimer = null, beatPos = 0;
+var bpmSlider = document.getElementById("bpmSlider");
+var bpmVal = document.getElementById("bpmVal");
+var beatLights = document.getElementById("beatLights");
+var metroBtn = document.getElementById("metroBtn");
+
+bpmSlider.addEventListener("input", function(){ bpmVal.textContent = bpmSlider.value; });
+
+function buildLights(){
+  beatLights.innerHTML = "";
+  var n = parseInt(document.getElementById("beatCount").value, 10);
+  for(var i = 0; i < n; i++){
+    var d = document.createElement("div");
+    d.className = "blight" + (i === 0 ? " down" : "");
+    beatLights.appendChild(d);
+  }
+}
+document.getElementById("beatCount").addEventListener("change", function(){
+  buildLights();
+  if(metroRunning){ metroStop(); metroStart(); }
+});
+
+function metroTick(){
+  var lights = beatLights.children;
+  var ctx = getCtx();
+  var osc = ctx.createOscillator(), g = ctx.createGain();
+  var down = (beatPos % lights.length === 0);
+  osc.frequency.value = down ? 1400 : 900;
+  g.gain.setValueAtTime(0.25, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+  osc.connect(g); g.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 0.1);
+  for(var i = 0; i < lights.length; i++) lights[i].classList.remove("on");
+  if(lights[beatPos % lights.length]) lights[beatPos % lights.length].classList.add("on");
+  beatPos++;
+}
+function metroStart(){
+  beatPos = 0;
+  metroTick();
+  var interval = 60000 / parseInt(bpmSlider.value, 10);
+  metroTimer = setInterval(metroTick, interval);
+  metroBtn.textContent = "⏹ Stop"; metroBtn.classList.remove("green");
+}
+function metroStop(){
+  clearInterval(metroTimer);
+  metroBtn.textContent = "▶ Start"; metroBtn.classList.add("green");
+  for(var i = 0; i < beatLights.children.length; i++) beatLights.children[i].classList.remove("on");
+}
+metroBtn.addEventListener("click", function(){
+  metroRunning = !metroRunning;
+  if(metroRunning) metroStart(); else metroStop();
+});
+buildLights();
+
+/* ---------------- PROJECTS (localStorage) ---------------- */
+var store = {
+  load: function(){ try{ return JSON.parse(localStorage.getItem("melodia_projects") || "[]"); }catch(e){ return []; } },
+  save: function(list){ localStorage.setItem("melodia_projects", JSON.stringify(list)); }
+};
+var projectList = document.getElementById("projectList");
+
+function renderProjects(){
+  var projects = store.load();
+  projectList.innerHTML = "";
+  if(!projects.length){
+    projectList.innerHTML = "<p class='muted'>No projects yet. Create one above, or record something and hit “Save to Project”.</p>";
+    return;
+  }
+  projects.forEach(function(p){
+    var row = document.createElement("div"); row.className = "project";
+    var meta = document.createElement("div");
+    var nm = document.createElement("div"); nm.className = "pname"; nm.textContent = "📁 " + p.name;
+    var sub = document.createElement("div"); sub.className = "pmeta";
+    var recText = p.recordings && p.recordings.length ? p.recordings.length + " recording(s) · " : "";
+    sub.textContent = recText + "tempo " + (p.tempo || "—") + " BPM · " + p.date;
+    meta.appendChild(nm); meta.appendChild(sub);
+    row.appendChild(meta);
+
+    if(p.notes){
+      var tag = document.createElement("span"); tag.className = "tag"; tag.textContent = "📝 " + p.notes;
+      row.appendChild(tag);
+    }
+    (p.recordings || []).forEach(function(r, ri){
+      var playBtn = document.createElement("button");
+      playBtn.className = "btn ghost"; playBtn.textContent = "▶ " + r.name;
+      playBtn.addEventListener("click", function(){
+        var audio = new Audio("data:audio/webm;base64," + r.dataB64);
+        audio.play();
+      });
+      row.appendChild(playBtn);
+    });
+
+    var editBtn = document.createElement("button"); editBtn.className = "btn ghost"; editBtn.textContent = "✏️ Rename";
+    editBtn.addEventListener("click", function(){
+      var input = document.createElement("input");
+      input.className = "pnameEdit"; input.value = p.name;
+      row.replaceChild(input, nm);
+      input.focus();
+      input.addEventListener("keydown", function(ev){
+        if(ev.key === "Enter"){
+          p.name = input.value.trim() || p.name;
+          store.save(projects); renderProjects();
+        }
+      });
+    });
+    var delBtn = document.createElement("button"); delBtn.className = "btn rec"; delBtn.textContent = "🗑 Delete";
+    delBtn.addEventListener("click", function(){
+      var idx = projects.indexOf(p);
+      projects.splice(idx, 1);
+      store.save(projects); renderProjects();
+    });
+    row.appendChild(editBtn); row.appendChild(delBtn);
+    projectList.appendChild(row);
+  });
+}
+
+document.getElementById("newProjectBtn").addEventListener("click", function(){
+  var name = document.getElementById("newProjectName").value.trim() || ("Project " + new Date().toLocaleString());
+  var projects = store.load();
+  projects.unshift({
+    id: Date.now(), name: name,
+    date: new Date().toISOString().slice(0, 10),
+    tempo: bpmSlider.value,
+    notes: (bpmVal.textContent ? "practiced at " + bpmVal.textContent + " BPM" : ""),
+    recordings: []
+  });
+  store.save(projects);
+  document.getElementById("newProjectName").value = "";
+  renderProjects();
+});
+
+function saveRecordingToProject(blob, name){
+  var projects = store.load();
+  if(!projects.length){
+    projects.unshift({id:Date.now(), name:"My Recordings", date:new Date().toISOString().slice(0,10), tempo:bpmSlider.value, notes:"", recordings:[]});
+  }
+  // store newest recording in the newest project (or first); base64 to fit localStorage
+  var reader = new FileReader();
+  reader.onload = function(){
+    var b64 = reader.result.split(",")[1];
+    projects[0].recordings = projects[0].recordings || [];
+    if(projects[0].recordings.length >= 3){
+      projects[0].recordings.pop(); // keep localStorage small
+    }
+    projects[0].recordings.push({name:name, dataB64:b64, date:new Date().toISOString()});
+    store.save(projects);
+    renderProjects();
+    alert("Saved “" + name + "” into project “" + projects[0].name + "” 💾");
+  };
+  reader.readAsDataURL(blob);
+}
+
+document.getElementById("exportProjectsBtn").addEventListener("click", function(){
+  var data = JSON.stringify(store.load(), null, 2);
+  var blob = new Blob([data], {type:"application/json"});
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "melodia_projects.json";
+  a.click();
+});
+document.getElementById("importProjectsBtn").addEventListener("click", function(){
+  document.getElementById("importFile").click();
+});
+document.getElementById("importFile").addEventListener("change", function(e){
+  var f = e.target.files[0];
+  if(!f) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    try{
+      var imported = JSON.parse(reader.result);
+      if(Array.isArray(imported)){
+        store.save(imported);
+        renderProjects();
+        alert("Imported " + imported.length + " project(s)!");
+      }
+    }catch(err){ alert("That file is not a valid Melodia JSON export."); }
+  };
+  reader.readAsText(f);
+});
+
+/* ============================================================
+   SING COACH & LEVEL TRACKING
+   All analysis runs on-device with the Web Audio API.
+   ============================================================ */
+
+/* ---- singing level (localStorage progress history) ---- */
+function loadLevelHistory(){ try{ return JSON.parse(localStorage.getItem("melodia_level") || "[]"); }catch(e){ return []; } }
+function saveLevelEntry(entry){
+  if(!entry) return;
+  var h = loadLevelHistory(); h.push(entry);
+  localStorage.setItem("melodia_level", JSON.stringify(h.slice(-50)));
+}
+function levelFromScore(score){
+  if(score >= 80) return "Advanced 🌟";
+  if(score >= 60) return "Intermediate 🎯";
+  if(score >= 35) return "Beginner+ 🎵";
+  return "Beginner 🌱";
+}
+function getLevelSummary(){
+  var h = loadLevelHistory();
+  if(!h.length) return "You haven't recorded a singing sample yet! 🎤 Click the 🎤 Record button right here in the chat, sing for 10–15 seconds, and I'll analyze your pitch, stability and range — then tell you your singing level.";
+  var last = h[h.length - 1];
+  var avg = h.reduce(function(s, x){ return s + x.score; }, 0) / h.length;
+  var trend = h.length > 1 ? (last.score - h[h.length - 2].score) : 0;
+  var trendTxt = trend > 0 ? " (up " + trend + " from last time — keep going! 📈)" : (trend < 0 ? " (down " + (-trend) + " from last time — normal variation)" : "");
+  return "📈 Your singing level: " + last.level + trendTxt + "\n\nLast session (" + last.date + "):\n• Score: " + last.score + "/100\n• On-key notes: " + last.onKey + "%\n• Pitch stability: " + last.stability + "%\n• Range: " + last.range + "\n\nSessions recorded: " + h.length + " · Average score: " + Math.round(avg) + "/100\nKeep recording in chat — your progress is tracked automatically!";
+}
+
+KB.push(
+  {k:["my level","singing level","how good am i","track my"], a:"📈 Record yourself with the 🎤 Record button in this chat (or the Recorder tab) and I'll score your on-key %, pitch stability, range — and give you a level from Beginner to Advanced. Ask “what's my level?” anytime to see your progress history!"},
+  {k:["sing a song","which song","help me sing","hindi song","bollywood"], a:"🎤 Open the Sing Coach tab! Pick from a built-in list of popular Hindi songs (title, film, singer, scale, tempo + practice tips), play the root note (Sa) for reference, and sing — I'll show the note you're on live and whether it fits the song's scale. Full lyrics/audio can't be embedded for copyright, but you can paste your own lyrics on screen."}
+);
+
+/* ---- in-chat mic record + analysis ---- */
+var chatRecActive = false, chatStream = null, chatMedia = null, chatChunks = [], chatAnalyser = null, chatSamples = [];
+var chatRecBtn = document.getElementById("chatRecBtn");
+
+function sampleLoop(){
+  if(!chatRecActive || !chatAnalyser) return;
+  var buf = new Float32Array(chatAnalyser.fftSize);
+  chatAnalyser.getFloatTimeDomainData(buf);
+  var f = autocorrelate(buf, getCtx().sampleRate);
+  if(f > 0) chatSamples.push({midi: 69 + 12 * Math.log2(f / 440), freq: f});
+  setTimeout(sampleLoop, 200);
+}
+
+function analyzeSamples(samples){
+  if(!samples.length){
+    return {message: "I couldn't detect enough pitch in that recording 🤔 — sing louder and closer to the mic, then try again.", entry: null};
+  }
+  var midis = samples.map(function(s){ return s.midi; });
+  var sorted = midis.slice().sort(function(a, b){ return a - b; });
+  var lo = sorted[0], hi = sorted[sorted.length - 1];
+  var onKey = 0, devSum = 0, devs = [];
+  samples.forEach(function(s){
+    var cents = (s.midi - Math.round(s.midi)) * 100;
+    devs.push(cents);
+    if(Math.abs(cents) <= 30) onKey++;
+    devSum += Math.abs(cents);
+  });
+  var onKeyPct = Math.round(onKey / samples.length * 100);
+  var avgDev = Math.round(devSum / samples.length);
+  var mean = devs.reduce(function(a, b){ return a + b; }, 0) / devs.length;
+  var sd = Math.sqrt(devs.reduce(function(a, b){ return a + (b - mean) * (b - mean); }, 0) / devs.length);
+  var stability = Math.max(0, Math.round(100 - sd * 2));
+  var score = Math.round(onKeyPct * 0.6 + stability * 0.4);
+  var level = levelFromScore(score);
+  var entry = {
+    date: new Date().toISOString().slice(0, 10),
+    score: score, level: level, onKey: onKeyPct, stability: stability,
+    range: noteName(Math.max(0, Math.floor(lo))) + " – " + noteName(Math.floor(hi)),
+    avgDev: avgDev
+  };
+  var msg = "🎧 Analysis of your recording:\n\n" + level + "\n• Score: " + score + "/100\n• On-key notes: " + onKeyPct + "% (within ±30 cents)\n• Pitch stability: " + stability + "%\n• Average pitch deviation: " + avgDev + " cents\n• Vocal range in this take: " + entry.range + "\n\n" +
+    (score >= 60 ? "Great control! Try a tougher song in the 🎤 Sing Coach tab." : "Tip: open the Tuner tab, hold a single note and keep the needle centered — that's exactly the accuracy this score measures.") +
+    "\n\n(Your level has been saved — ask me “what's my level?” anytime.)";
+  return {message: msg, entry: entry};
+}
+
+chatRecBtn.addEventListener("click", function(){
+  if(chatRecActive){ if(chatMedia && chatMedia.state !== "inactive") chatMedia.stop(); return; }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    addMsg("🎙️ In-chat recording needs HTTPS or localhost — please open this page on a secure origin (e.g. host it on GitHub Pages/Netlify).", "bot");
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({audio: {echoCancellation: false, noiseSuppression: false}}).then(function(stream){
+    chatStream = stream; chatChunks = []; chatSamples = [];
+    var ctx = getCtx();
+    chatAnalyser = ctx.createAnalyser(); chatAnalyser.fftSize = 2048;
+    ctx.createMediaStreamSource(stream).connect(chatAnalyser);
+    chatMedia = new MediaRecorder(stream);
+    chatMedia.ondataavailable = function(e){ if(e.data.size) chatChunks.push(e.data); };
+    chatMedia.onstop = chatRecDone;
+    chatMedia.start();
+    chatRecActive = true;
+    chatRecBtn.textContent = "⏹ Stop";
+    addMsg("🎙️ Recording… sing for 10–15 seconds, then press Stop and I'll analyze your pitch!", "bot");
+    sampleLoop();
+  }).catch(function(){
+    addMsg("Mic permission was denied or unavailable — allow microphone access in your browser and try again.", "bot");
+  });
+});
+
+function chatRecDone(){
+  chatRecActive = false;
+  chatRecBtn.textContent = "🎤 Record";
+  if(chatStream){ chatStream.getTracks().forEach(function(t){ t.stop(); }); chatStream = null; }
+  var blob = new Blob(chatChunks, {type: "audio/webm"});
+  var url = URL.createObjectURL(blob);
+  var d = document.createElement("div");
+  d.className = "msg user";
+  var a = document.createElement("audio");
+  a.controls = true; a.src = url; a.style.maxWidth = "240px"; a.style.display = "block";
+  d.appendChild(a);
+  chatBox.appendChild(d);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  var res = analyzeSamples(chatSamples);
+  addMsg(res.message, "bot");
+  saveLevelEntry(res.entry);
+}
+
+/* extra suggestion chips */
+var chipLevel = document.createElement("button");
+chipLevel.className = "chip"; chipLevel.textContent = "📈 What's my singing level?";
+chipLevel.addEventListener("click", function(){
+  addMsg("What's my singing level?", "user");
+  setTimeout(function(){ addMsg(getLevelSummary(), "bot"); }, 250);
+});
+document.getElementById("chips").appendChild(chipLevel);
+var chipSing = document.createElement("button");
+chipSing.className = "chip"; chipSing.textContent = "🎤 Help me sing a song";
+chipSing.addEventListener("click", function(){
+  addMsg("Help me sing a Hindi song", "user");
+  setTimeout(function(){ addMsg(kbAnswer("help me sing a song"), "bot"); }, 250);
+});
+document.getElementById("chips").appendChild(chipSing);
+
+/* ---- Hindi song practice list (metadata only — no lyrics/audio, copyright) ---- */
+var SONGS = [
+  {t:"Kal Ho Naa Ho", f:"Kal Ho Naa Ho (2003)", s:"Sonu Nigam", key:"B♭ major", r:10, sc:"major", tempo:92, tips:"Sing the opening softly and hold the long notes with steady breath — great for practicing smooth glides (meend) and breath control."},
+  {t:"Tum Hi Ho", f:"Aashiqui 2 (2013)", s:"Arijit Singh", key:"A minor", r:9, sc:"minor", tempo:72, tips:"Slow 6/8 feel — practice with the metronome at ~70 BPM. Keep the mukhda gentle; add light vibrato only on held notes."},
+  {t:"Channa Mereya", f:"Ae Dil Hai Mushkil (2016)", s:"Arijit Singh", key:"D minor", r:2, sc:"minor", tempo:88, tips:"Dynamics song: whisper-soft first verse, save full voice for the hook. Record yourself to check the contrast."},
+  {t:"Kun Faya Kun", f:"Rockstar (2011)", s:"A.R. Rahman, Javed Ali, Mohit Chauhan", key:"C major (Sufi flavor)", r:0, sc:"major", tempo:96, tips:"Practice the opening slides slowly on 'oo' vowels before adding words. Sufi ornamentation = slow, patient drills."},
+  {t:"Lag Ja Gale", f:"Woh Kaun Thi? (1964)", s:"Lata Mangeshkar", key:"C major", r:0, sc:"major", tempo:80, tips:"The gold standard of meend (gliding between notes). Slide gently up from Sa and keep pitch centered — verify with the Tuner."},
+  {t:"Ajeeb Dastaan Hai Yeh", f:"Dil Apna Aur Preet Parai (1960)", s:"Lata Mangeshkar", key:"G major", r:7, sc:"major", tempo:76, tips:"Clean, almost ornament-free melody in a waltz feel — perfect for beginners training pitch purity."},
+  {t:"Pani Da Rang", f:"Vicky Donor (2012)", s:"Ayushmann Khurrana", key:"E minor", r:4, sc:"minor", tempo:84, tips:"Conversational mid-range — a great first song for male beginners. Keep the hooks light, don't push volume."},
+  {t:"Agar Tum Saath Ho", f:"Tamasha (2015)", s:"Alka Yagnik, Arijit Singh", key:"D minor", r:2, sc:"minor", tempo:70, tips:"Long slow phrases — mark your breath points before each line. Hum the whole melody first, then add words."},
+  {t:"Raabta", f:"Agent Vinod (2012)", s:"Arijit Singh, Hamsika Iyer", key:"C♯ minor", r:1, sc:"minor", tempo:92, tips:"Smooth legato pop — keep every note connected; practice the hook on one breath."},
+  {t:"Gerua", f:"Dilwale (2015)", s:"Arijit Singh", key:"B major", r:11, sc:"major", tempo:88, tips:"Wide, soaring melody — warm up first! Approach the high hook with a relaxed jaw and strong diaphragm support."},
+  {t:"Tera Ban Jaunga", f:"Kabir Singh (2019)", s:"Akhil Sachdeva, Tulsi Kumar", key:"A major", r:9, sc:"major", tempo:78, tips:"Duet practice: record one part in the Recorder tab, then sing the other part over your own recording."},
+  {t:"Sajni", f:"Laapataa Ladies (2024)", s:"Arijit Singh", key:"E minor", r:4, sc:"minor", tempo:80, tips:"Sparse and haunting — dynamics matter more than power. Metronome at ~76 BPM and keep the phrase endings soft."}
+];
+
+var currentSong = null, currentSongKeyName = "", songScaleSet = new Set();
+var singActive = false, singStream = null, singAnalyser = null, singRAF = null, singStats = {total: 0, on: 0};
+
+function renderSongList(filter){
+  var list = document.getElementById("songList");
+  list.innerHTML = "";
+  var f = (filter || "").toLowerCase();
+  SONGS.forEach(function(song, i){
+    if(f && (song.t + " " + song.s + " " + song.f).toLowerCase().indexOf(f) === -1) return;
+    var d = document.createElement("div"); d.className = "song";
+    d.innerHTML = "<h3>" + song.t + "</h3>" +
+      "<div class='meta'>🎬 " + song.f + " · 🎤 " + song.s + " · 🎼 " + song.key + " · ⏱ ~" + song.tempo + " BPM</div>" +
+      "<div class='meta'>💡 " + song.tips + "</div>";
+    var row = document.createElement("div"); row.className = "singRow";
+    var b = document.createElement("button"); b.className = "btn"; b.textContent = "🎯 Practice this song";
+    b.addEventListener("click", function(){ selectSong(i); });
+    var y = document.createElement("a"); y.className = "chip"; y.target = "_blank"; y.rel = "noopener";
+    y.href = "https://www.youtube.com/results?search_query=" + encodeURIComponent(song.t + " " + song.s + " song");
+    y.textContent = "▶ Listen on YouTube";
+    row.appendChild(b); row.appendChild(y);
+    d.appendChild(row);
+    list.appendChild(d);
+  });
+  if(!list.children.length) list.innerHTML = "<p class='muted'>No songs match that search.</p>";
+}
+
+function selectSong(i){
+  currentSong = SONGS[i];
+  currentSongKeyName = currentSong.key;
+  songScaleSet = new Set(SCALES[currentSong.sc].map(function(st){ return (st + currentSong.r) % 12; }));
+  stopSing();
+  var p = document.getElementById("songPanel");
+  p.innerHTML = "";
+  var card = document.createElement("div"); card.className = "lesson";
+  card.innerHTML = "<h3>🎯 Now practicing: " + currentSong.t + "</h3>" +
+    "<p>🎬 " + currentSong.f + " · 🎤 " + currentSong.s + "</p>" +
+    "<p>🎼 Target scale: " + currentSong.key + " · Tempo ≈ " + currentSong.tempo + " BPM</p>" +
+    "<p>💡 " + currentSong.tips + "</p>";
+  p.appendChild(card);
+  var readout = document.createElement("div");
+  readout.innerHTML = "<div id='liveNote'>– –</div><div id='liveInfo'>Press “Start Live Feedback” and sing a phrase</div>";
+  p.appendChild(readout);
+  var row = document.createElement("div"); row.className = "singRow";
+  var startB = document.createElement("button");
+  startB.className = "btn green"; startB.id = "singStartBtn"; startB.textContent = "🎤 Start Live Feedback";
+  startB.addEventListener("click", function(){
+    if(singActive){ stopSing(); return; }
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      document.getElementById("liveInfo").textContent = "Microphone needs HTTPS or localhost.";
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({audio: {echoCancellation: false, noiseSuppression: false}}).then(function(stream){
+      singStream = stream;
+      var ctx = getCtx();
+      singAnalyser = ctx.createAnalyser(); singAnalyser.fftSize = 2048;
+      ctx.createMediaStreamSource(stream).connect(singAnalyser);
+      singStats = {total: 0, on: 0};
+      singActive = true;
+      startB.textContent = "⏹ Stop Feedback";
+      startB.classList.remove("green"); startB.classList.add("rec");
+      singLoop();
+    }).catch(function(){
+      document.getElementById("liveInfo").textContent = "Mic permission denied — allow access and try again.";
+    });
+  });
+  var sa = document.createElement("button"); sa.className = "btn ghost"; sa.textContent = "🎵 Play Sa (root note)";
+  sa.addEventListener("click", function(){
+    playTone(midiToFreq(60 + ((currentSong.r % 12) + 12) % 12), 1.5);
+  });
+  var mt = document.createElement("button"); mt.className = "btn ghost";
+  mt.textContent = "⏱ Metronome @ " + currentSong.tempo + " BPM";
+  mt.addEventListener("click", function(){
+    bpmSlider.value = currentSong.tempo;
+    bpmVal.textContent = currentSong.tempo;
+    document.querySelector('nav button[data-view="metronome"]').click();
+  });
+  row.appendChild(startB); row.appendChild(sa); row.appendChild(mt);
+  p.appendChild(row);
+  var lyr = document.createElement("textarea");
+  lyr.className = "txt"; lyr.id = "lyricsBox"; lyr.rows = 4; lyr.style.width = "100%"; lyr.style.marginTop = "14px";
+  lyr.placeholder = "Paste your own lyrics or a reference note for this song (stays private in your browser)…";
+  p.appendChild(lyr);
+  var saveB = document.createElement("button"); saveB.className = "btn"; saveB.textContent = "💾 Save practice project with lyrics";
+  saveB.addEventListener("click", function(){
+    var projects = store.load();
+    projects.unshift({id: Date.now(), name: "Practice: " + currentSong.t, date: new Date().toISOString().slice(0, 10), tempo: currentSong.tempo, notes: lyr.value.trim() || currentSong.key, recordings: []});
+    store.save(projects); renderProjects();
+    alert("Saved “Practice: " + currentSong.t + "” to your Projects 💾");
+  });
+  p.appendChild(saveB);
+}
+
+function stopSing(){
+  singActive = false;
+  cancelAnimationFrame(singRAF);
+  if(singStream){ singStream.getTracks().forEach(function(t){ t.stop(); }); singStream = null; }
+  var b = document.getElementById("singStartBtn");
+  if(b){ b.textContent = "🎤 Start Live Feedback"; b.classList.add("green"); b.classList.remove("rec"); }
+  var n = document.getElementById("liveNote");
+  if(n) n.textContent = "– –";
+  var inf = document.getElementById("liveInfo");
+  if(inf) inf.textContent = "Feedback stopped.";
+}
+
+function singLoop(){
+  if(!singActive || !singAnalyser) return;
+  var ctx = getCtx();
+  var buf = new Float32Array(singAnalyser.fftSize);
+  singAnalyser.getFloatTimeDomainData(buf);
+  var f = autocorrelate(buf, ctx.sampleRate);
+  var noteEl = document.getElementById("liveNote");
+  var infoEl = document.getElementById("liveInfo");
+  if(f > 0){
+    var mf = 69 + 12 * Math.log2(f / 440);
+    var nearest = Math.round(mf);
+    var cents = Math.round((mf - nearest) * 100);
+    noteEl.textContent = noteName(nearest);
+    var inScale = songScaleSet.has(((nearest % 12) + 12) % 12);
+    if(inScale) singStats.on++;
+    singStats.total++;
+    var pct = singStats.total ? Math.round(singStats.on / singStats.total * 100) : 0;
+    infoEl.textContent = f.toFixed(1) + " Hz · " + (cents > 0 ? "+" : "") + cents + " cents · " +
+      (inScale ? "✅ fits " + currentSongKeyName : "⚠ outside " + currentSongKeyName) +
+      " · on-scale: " + pct + "%";
+  } else {
+    noteEl.textContent = "– –";
+    infoEl.textContent = "Listening… sing any phrase of the song";
+  }
+  singRAF = requestAnimationFrame(singLoop);
+}
+
+document.getElementById("songSearch").addEventListener("input", function(){ renderSongList(this.value); });
+renderSongList("");
+
+renderProjects();
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
